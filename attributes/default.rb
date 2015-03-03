@@ -17,6 +17,37 @@
 # limitations under the License.
 #
 
+default['apache']['version'] =
+  case node['platform_family']
+  when 'debian'
+    case node['platform']
+    when 'ubuntu'
+      node['platform_version'].to_f >= 13.10 ? '2.4' : '2.2'
+    when 'linuxmint'
+      node['platform_version'].to_i >= 16 ? '2.4' : '2.2'
+    when 'debian', 'raspbian'
+      node['platform_version'].to_f >= 8.0 ? '2.4' : '2.2'
+    else
+      '2.4'
+    end
+  when 'rhel'
+    node['platform_version'].to_f >= 7.0 ? '2.4' : '2.2'
+  when 'fedora'
+    node['platform_version'].to_f >= 18 ? '2.4' : '2.2'
+  when 'suse'
+    case node['platform']
+    when 'opensuse'
+      node['platform_version'].to_f >= 13.1 ? '2.4' : '2.2'
+      # FIXME: when "suse" for SLES
+    else
+      '2.4'
+    end
+  when 'freebsd'
+    node['platform_version'].to_f >= 10.0 ? '2.4' : '2.2'
+  else
+    '2.4'
+  end
+
 default['apache']['root_group'] = 'root'
 
 # Where the various parts of apache are
@@ -175,12 +206,21 @@ default['apache']['proxy']['deny_from']  = 'all'
 default['apache']['proxy']['allow_from'] = 'none'
 
 # Default modules to enable via include_recipe
-
 default['apache']['default_modules'] = %w[
-  status alias auth_basic authn_file authz_default authz_groupfile authz_host authz_user autoindex
+  status alias auth_basic authn_file authz_groupfile authz_host authz_user autoindex
   dir env mime negotiation setenvif
 ]
+
+if node['apache']['version'] >= '2.4'
+  default['apache']['default_modules'] << "authz_core"
+else
+  default['apache']['default_modules'] << "authz_default"
+end
+
 
 %w[log_config logio].each do |log_mod|
   default['apache']['default_modules'] << log_mod if %w[rhel fedora suse arch freebsd].include?(node['platform_family'])
 end
+
+
+
